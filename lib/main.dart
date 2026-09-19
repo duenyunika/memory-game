@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:math";
 import "package:flutter/material.dart";
+import "package:audioplayers/audioplayers.dart";
 
 void main() {
   runApp(const MemoryMatchApp());
@@ -24,134 +25,72 @@ class MemoryMatchApp extends StatelessWidget {
 }
 
 // ============================================================
+// AUDIO MANAGER (dipakai bersama di seluruh app)
+// ============================================================
+
+class AudioManager {
+  AudioManager._internal();
+  static final AudioManager instance = AudioManager._internal();
+
+  // Player terpisah untuk musik latar (loop terus)
+  final AudioPlayer _bgmPlayer = AudioPlayer();
+
+  // Player terpisah untuk efek suara (supaya bisa tumpang tindih/cepat)
+  final AudioPlayer _sfxPlayer = AudioPlayer();
+
+  bool _bgmStarted = false;
+
+  Future<void> playBackgroundMusic() async {
+    if (_bgmStarted) return;
+    _bgmStarted = true;
+    await _bgmPlayer.setReleaseMode(ReleaseMode.loop);
+    await _bgmPlayer.setVolume(0.4);
+    await _bgmPlayer.play(AssetSource("audio/background_music.mp3"));
+  }
+
+  Future<void> stopBackgroundMusic() async {
+    _bgmStarted = false;
+    await _bgmPlayer.stop();
+  }
+
+  Future<void> pauseBackgroundMusic() async {
+    await _bgmPlayer.pause();
+  }
+
+  Future<void> resumeBackgroundMusic() async {
+    if (_bgmStarted) {
+      await _bgmPlayer.resume();
+    }
+  }
+
+  Future<void> _playSfx(String fileName) async {
+    // stop() dulu supaya kalau tap cepat-cepat suaranya tidak numpuk aneh
+    await _sfxPlayer.stop();
+    await _sfxPlayer.play(AssetSource("audio/$fileName"));
+  }
+
+  Future<void> playTap() => _playSfx("tap.mp3");
+  Future<void> playMatch() => _playSfx("match.mp3");
+  Future<void> playWrong() => _playSfx("wrong.mp3");
+  Future<void> playWin() => _playSfx("win.mp3");
+  Future<void> playLose() => _playSfx("lose.mp3");
+}
+
+// ============================================================
 // EMOJI
 // ============================================================
 
 const List<String> allSymbols = [
-  // Ekspresi
-  "😀",
-  "😂",
-  "🥳",
-  "😎",
-  "🤩",
-  "😈",
-  "👻",
-  "🤖",
-  "👽",
-  "🤔",
-  "😴",
-  "🤗",
-
-  // Hewan
-  "🐶",
-  "🐱",
-  "🐭",
-  "🐹",
-  "🐰",
-  "🦊",
-  "🐻",
-  "🐼",
-  "🐨",
-  "🐯",
-  "🦁",
-  "🐮",
-  "🐷",
-  "🐸",
-  "🐵",
-  "🐔",
-  "🐧",
-  "🐦",
-  "🦄",
-  "🐝",
-  "🦋",
-  "🐢",
-  "🐙",
-  "🐠",
-
-  // Buah
-  "🍎",
-  "🍐",
-  "🍊",
-  "🍋",
-  "🍌",
-  "🍉",
-  "🍇",
-  "🍓",
-  "🫐",
-  "🍒",
-  "🍑",
-  "🥝",
-  "🥭",
-  "🍍",
-  "🥥",
-
-  // Bunga dan tanaman
-  "🌸",
-  "🌺",
-  "🌻",
-  "🌹",
-  "🌷",
-  "🌼",
-  "💐",
-  "🪻",
-  "🌱",
-  "🌿",
-  "🍀",
-  "☘️",
-  "🌴",
-  "🌵",
-
-  // Makanan
-  "🍕",
-  "🍔",
-  "🍟",
-  "🌭",
-  "🍿",
-  "🍩",
-  "🍪",
-  "🎂",
-  "🍰",
-  "🧁",
-  "🍦",
-  "🍫",
-  "🍭",
-  "🍬",
-  "🍜",
-  "🍣",
-  "🍙",
-
-  // Alam
-  "🌈",
-  "☀️",
-  "🌙",
-  "⭐",
-  "🌟",
-  "☁️",
-  "❄️",
-  "🔥",
-  "🌊",
-  "🌍",
-  "⚡",
-
-  // Benda dan hobi
-  "⚽",
-  "🏀",
-  "🏈",
-  "⚾",
-  "🎸",
-  "🎹",
-  "🎨",
-  "🎮",
-  "🚗",
-  "🚀",
-  "✈️",
-  "🚲",
-  "🎁",
-  "💎",
-  "👑",
-  "🎧",
-  "📷",
-  "🎯",
+  "😀","😂","🥳","😎","🤩","😈","👻","🤖","👽","🤔","😴","🤗",
+  "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮",
+  "🐷","🐸","🐵","🐔","🐧","🐦","🦄","🐝","🦋","🐢","🐙","🐠",
+  "🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍒","🍑","🥝",
+  "🥭","🍍","🥥","🌸","🌺","🌻","🌹","🌷","🌼","💐","🪻","🌱",
+  "🌿","🍀","☘️","🌴","🌵","🍕","🍔","🍟","🌭","🍿","🍩","🍪",
+  "🎂","🍰","🧁","🍦","🍫","🍭","🍬","🍜","🍣","🍙","🌈","☀️",
+  "🌙","⭐","🌟","☁️","❄️","🔥","🌊","🌍","⚡","⚽","🏀","🏈",
+  "⚾","🎸","🎹","🎨","🎮","🚗","🚀","✈️","🚲","🎁","💎","👑",
+  "🎧","📷","🎯",
 ];
 
 // ============================================================
@@ -168,23 +107,19 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int selectedCards = 12;
 
-  final List<int> cardOptions = [
-    4,
-    6,
-    8,
-    10,
-    12,
-    14,
-    16,
-    18,
-    20,
-  ];
+  final List<int> cardOptions = [4, 6, 8, 10, 12, 14, 16, 18, 20];
 
   final Map<int, int> highScores = {};
 
+  @override
+  void initState() {
+    super.initState();
+    // Musik latar mulai begitu app dibuka
+    AudioManager.instance.playBackgroundMusic();
+  }
+
   void updateHighScore(int cardCount, int score) {
     final int currentBest = highScores[cardCount] ?? 0;
-
     if (score > currentBest) {
       setState(() {
         highScores[cardCount] = score;
@@ -197,12 +132,8 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text(
-            "🏆 SKOR TERTINGGI",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          title: const Text("🏆 SKOR TERTINGGI",
+              style: TextStyle(fontWeight: FontWeight.bold)),
           content: SizedBox(
             width: double.maxFinite,
             height: 360,
@@ -211,31 +142,18 @@ class _HomePageState extends State<HomePage> {
               itemBuilder: (context, index) {
                 final int cards = cardOptions[index];
                 final int score = highScores[cards] ?? 0;
-
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     leading: CircleAvatar(
-                      child: Text(
-                        "$cards",
+                      child: Text("$cards",
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                    title: Text("$cards Kartu",
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    trailing: Text("$score",
                         style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      "$cards Kartu",
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    trailing: Text(
-                      "$score",
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                            fontSize: 20, fontWeight: FontWeight.bold)),
                   ),
                 );
               },
@@ -243,9 +161,7 @@ class _HomePageState extends State<HomePage> {
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(context),
               child: const Text("TUTUP"),
             ),
           ],
@@ -259,61 +175,40 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text(
-            "🎮 CARA BERMAIN",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          title: const Text("🎮 CARA BERMAIN",
+              style: TextStyle(fontWeight: FontWeight.bold)),
           content: const SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "1. Pilih jumlah kartu yang ingin dimainkan.",
-                  style: TextStyle(fontSize: 15),
-                ),
+                Text("1. Pilih jumlah kartu yang ingin dimainkan.",
+                    style: TextStyle(fontSize: 15)),
+                SizedBox(height: 10),
+                Text("2. Tekan tombol MULAI BERMAIN.",
+                    style: TextStyle(fontSize: 15)),
+                SizedBox(height: 10),
+                Text("3. Buka dua kartu untuk mencari emoji yang sama.",
+                    style: TextStyle(fontSize: 15)),
+                SizedBox(height: 10),
+                Text("4. Pasangan yang benar akan tetap terbuka.",
+                    style: TextStyle(fontSize: 15)),
+                SizedBox(height: 10),
+                Text("5. Pasangan yang salah akan tertutup kembali.",
+                    style: TextStyle(fontSize: 15)),
                 SizedBox(height: 10),
                 Text(
-                  "2. Tekan tombol MULAI BERMAIN.",
-                  style: TextStyle(fontSize: 15),
-                ),
+                    "6. Semakin cepat menyelesaikan permainan, semakin besar bonus waktunya.",
+                    style: TextStyle(fontSize: 15)),
                 SizedBox(height: 10),
-                Text(
-                  "3. Buka dua kartu untuk mencari emoji yang sama.",
-                  style: TextStyle(fontSize: 15),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  "4. Pasangan yang benar akan tetap terbuka.",
-                  style: TextStyle(fontSize: 15),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  "5. Pasangan yang salah akan tertutup kembali.",
-                  style: TextStyle(fontSize: 15),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  "6. Semakin cepat menyelesaikan permainan, semakin besar bonus waktunya.",
-                  style: TextStyle(fontSize: 15),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  "7. Kumpulkan skor setinggi mungkin! 🏆",
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Text("7. Kumpulkan skor setinggi mungkin! 🏆",
+                    style: TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(context),
               child: const Text("MENGERTI"),
             ),
           ],
@@ -343,15 +238,8 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  const Text(
-                    "🧠",
-                    style: TextStyle(
-                      fontSize: 70,
-                    ),
-                  ),
-
+                  const Text("🧠", style: TextStyle(fontSize: 70)),
                   const SizedBox(height: 10),
-
                   const Text(
                     "MEMORY MATCH",
                     textAlign: TextAlign.center,
@@ -362,21 +250,13 @@ class _HomePageState extends State<HomePage> {
                       letterSpacing: 2,
                     ),
                   ),
-
                   const SizedBox(height: 8),
-
                   const Text(
                     "Uji ingatanmu dan temukan semua pasangan!",
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: Colors.white70,
-                    ),
+                    style: TextStyle(fontSize: 15, color: Colors.white70),
                   ),
-
                   const SizedBox(height: 35),
-
-                  // PILIH JUMLAH KARTU
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -397,17 +277,13 @@ class _HomePageState extends State<HomePage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-
                         const SizedBox(height: 18),
-
                         Wrap(
                           spacing: 10,
                           runSpacing: 10,
                           alignment: WrapAlignment.center,
                           children: cardOptions.map((cards) {
-                            final bool selected =
-                                selectedCards == cards;
-
+                            final bool selected = selectedCards == cards;
                             return GestureDetector(
                               onTap: () {
                                 setState(() {
@@ -415,9 +291,7 @@ class _HomePageState extends State<HomePage> {
                                 });
                               },
                               child: AnimatedContainer(
-                                duration: const Duration(
-                                  milliseconds: 200,
-                                ),
+                                duration: const Duration(milliseconds: 200),
                                 width: 58,
                                 height: 48,
                                 alignment: Alignment.center,
@@ -425,8 +299,7 @@ class _HomePageState extends State<HomePage> {
                                   color: selected
                                       ? Colors.white
                                       : Colors.white.withOpacity(0.15),
-                                  borderRadius:
-                                      BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
                                     color: Colors.white,
                                     width: selected ? 2 : 1,
@@ -449,13 +322,7 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 25),
-
-                  // ==================================================
-                  // MULAI BERMAIN
-                  // ==================================================
-
                   SizedBox(
                     width: double.infinity,
                     height: 58,
@@ -473,30 +340,20 @@ class _HomePageState extends State<HomePage> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor:
-                            const Color(0xFF6A5AE0),
+                        foregroundColor: const Color(0xFF6A5AE0),
                         elevation: 5,
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(18),
                         ),
                       ),
                       child: const Text(
                         "▶  MULAI BERMAIN",
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 12),
-
-                  // ==================================================
-                  // SKOR TERTINGGI
-                  // ==================================================
-
                   SizedBox(
                     width: double.infinity,
                     height: 55,
@@ -504,30 +361,20 @@ class _HomePageState extends State<HomePage> {
                       onPressed: showHighScores,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor:
-                            const Color(0xFF6A5AE0),
+                        foregroundColor: const Color(0xFF6A5AE0),
                         elevation: 3,
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(18),
                         ),
                       ),
                       child: const Text(
                         "🏆  SKOR TERTINGGI",
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 12),
-
-                  // ==================================================
-                  // CARA BERMAIN
-                  // ==================================================
-
                   SizedBox(
                     width: double.infinity,
                     height: 55,
@@ -535,32 +382,23 @@ class _HomePageState extends State<HomePage> {
                       onPressed: showHowToPlay,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor:
-                            const Color(0xFF6A5AE0),
+                        foregroundColor: const Color(0xFF6A5AE0),
                         elevation: 3,
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(18),
                         ),
                       ),
                       child: const Text(
                         "❓  CARA BERMAIN",
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 25),
-
                   const Text(
                     "✨ Temukan semua pasangan!",
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                 ],
               ),
@@ -652,22 +490,14 @@ class _GamePageState extends State<GamePage> {
 
     final int pairCount = widget.totalCards ~/ 2;
 
-    final List<String> shuffled =
-        List<String>.from(allSymbols)..shuffle(random);
+    final List<String> shuffled = List<String>.from(allSymbols)..shuffle(random);
 
-    final List<String> selected =
-        shuffled.take(pairCount).toList();
+    final List<String> selected = shuffled.take(pairCount).toList();
 
-    cards = [
-      ...selected,
-      ...selected,
-    ]..shuffle(random);
+    cards = [...selected, ...selected]..shuffle(random);
 
-    flipped =
-        List<bool>.filled(widget.totalCards, false);
-
-    matched =
-        List<bool>.filled(widget.totalCards, false);
+    flipped = List<bool>.filled(widget.totalCards, false);
+    matched = List<bool>.filled(widget.totalCards, false);
 
     firstIndex = null;
     secondIndex = null;
@@ -686,35 +516,32 @@ class _GamePageState extends State<GamePage> {
   }
 
   void startTimer() {
-    timer = Timer.periodic(
-      const Duration(seconds: 1),
-      (timer) {
-        if (!mounted || gameOver) {
-          timer.cancel();
-          return;
-        }
+    timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || gameOver) {
+        timer.cancel();
+        return;
+      }
 
-        if (timeLeft > 0) {
-          setState(() {
-            timeLeft--;
-          });
-        }
+      if (timeLeft > 0) {
+        setState(() {
+          timeLeft--;
+        });
+      }
 
-        if (timeLeft <= 0) {
-          timer.cancel();
-          endGame(false);
-        }
-      },
-    );
+      if (timeLeft <= 0) {
+        timer.cancel();
+        endGame(false);
+      }
+    });
   }
 
   void tapCard(int index) {
-    if (gameOver ||
-        checking ||
-        flipped[index] ||
-        matched[index]) {
+    if (gameOver || checking || flipped[index] || matched[index]) {
       return;
     }
+
+    // Bunyi tiap kartu dipencet
+    AudioManager.instance.playTap();
 
     setState(() {
       flipped[index] = true;
@@ -739,45 +566,48 @@ class _GamePageState extends State<GamePage> {
     final int first = firstIndex!;
     final int second = secondIndex!;
 
-    Future.delayed(
-      const Duration(milliseconds: 700),
-      () {
-        if (!mounted || gameOver) {
-          return;
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (!mounted || gameOver) {
+        return;
+      }
+
+      if (cards[first] == cards[second]) {
+        // Bunyi pasangan cocok
+        AudioManager.instance.playMatch();
+
+        setState(() {
+          matched[first] = true;
+          matched[second] = true;
+          score += 10;
+        });
+
+        firstIndex = null;
+        secondIndex = null;
+        checking = false;
+
+        if (matched.every((value) => value)) {
+          endGame(true);
         }
+      } else {
+        // Bunyi salah/tidak cocok
+        AudioManager.instance.playWrong();
 
-        if (cards[first] == cards[second]) {
-          setState(() {
-            matched[first] = true;
-            matched[second] = true;
-            score += 10;
-          });
+        setState(() {
+          flipped[first] = false;
+          flipped[second] = false;
 
-          firstIndex = null;
-          secondIndex = null;
-          checking = false;
+          score -= 2;
 
-          if (matched.every((value) => value)) {
-            endGame(true);
+          if (score < 0) {
+            score = 0;
           }
-        } else {
-          setState(() {
-            flipped[first] = false;
-            flipped[second] = false;
+        });
 
-            score -= 2;
-
-            if (score < 0) {
-              score = 0;
-            }
-          });
-
-          firstIndex = null;
-          secondIndex = null;
-          checking = false;
-        }
-      },
-    );
+        firstIndex = null;
+        secondIndex = null;
+        checking = false;
+      }
+    });
   }
 
   void endGame(bool won) {
@@ -787,15 +617,10 @@ class _GamePageState extends State<GamePage> {
 
     timer?.cancel();
 
-    final int finalScore =
-        score + (won ? timeLeft : 0);
+    final int finalScore = score + (won ? timeLeft : 0);
 
     if (!scoreSaved) {
-      widget.onScore(
-        widget.totalCards,
-        finalScore,
-      );
-
+      widget.onScore(widget.totalCards, finalScore);
       scoreSaved = true;
     }
 
@@ -803,124 +628,72 @@ class _GamePageState extends State<GamePage> {
       gameOver = true;
     });
 
-    Future.delayed(
-      const Duration(milliseconds: 400),
-      () {
-        if (mounted) {
-          showResultDialog(
-            won,
-            finalScore,
-          );
-        }
-      },
-    );
+    // Bunyi menang / kalah, sekali saja
+    if (won) {
+      AudioManager.instance.playWin();
+    } else {
+      AudioManager.instance.playLose();
+    }
+
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) {
+        showResultDialog(won, finalScore);
+      }
+    });
   }
 
-  void showResultDialog(
-    bool won,
-    int finalScore,
-  ) {
+  void showResultDialog(bool won, int finalScore) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: Column(
             children: [
-              Text(
-                won ? "🏆" : "⏰",
-                style: const TextStyle(
-                  fontSize: 55,
-                ),
-              ),
+              Text(won ? "🏆" : "⏰", style: const TextStyle(fontSize: 55)),
               Text(
                 won ? "HEBAT!" : "WAKTU HABIS",
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 24,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
               ),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                "SKOR AKHIR",
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
+              const Text("SKOR AKHIR",
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-
-              Text(
-                "$finalScore",
-                style: const TextStyle(
-                  fontSize: 42,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
+              Text("$finalScore",
+                  style: const TextStyle(fontSize: 42, fontWeight: FontWeight.bold)),
               const SizedBox(height: 15),
-
               Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   Column(
                     children: [
-                      const Text(
-                        "Gerakan",
-                        style: TextStyle(
-                          color: Colors.grey,
-                        ),
-                      ),
-                      Text(
-                        "$moves",
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      const Text("Gerakan", style: TextStyle(color: Colors.grey)),
+                      Text("$moves",
+                          style: const TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   Column(
                     children: [
-                      const Text(
-                        "Waktu",
-                        style: TextStyle(
-                          color: Colors.grey,
-                        ),
-                      ),
-                      Text(
-                        "${timeLeft}s",
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      const Text("Waktu", style: TextStyle(color: Colors.grey)),
+                      Text("${timeLeft}s",
+                          style: const TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ],
               ),
-
               const SizedBox(height: 15),
-
-              Text(
-                "Jumlah kartu: ${widget.totalCards}",
-                style: const TextStyle(
-                  color: Colors.grey,
-                ),
-              ),
+              Text("Jumlah kartu: ${widget.totalCards}",
+                  style: const TextStyle(color: Colors.grey)),
             ],
           ),
-          actionsAlignment:
-              MainAxisAlignment.center,
+          actionsAlignment: MainAxisAlignment.center,
           actions: [
             SizedBox(
               width: double.infinity,
@@ -930,26 +703,16 @@ class _GamePageState extends State<GamePage> {
                   startGame();
                 },
                 style: ElevatedButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(
-                    vertical: 14,
-                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: const Text(
-                  "🔄  MAIN LAGI",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: const Text("🔄  MAIN LAGI",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
-
             const SizedBox(height: 5),
-
             SizedBox(
               width: double.infinity,
               child: TextButton(
@@ -957,12 +720,8 @@ class _GamePageState extends State<GamePage> {
                   Navigator.pop(context);
                   Navigator.pop(context);
                 },
-                child: const Text(
-                  "🏠  MENU UTAMA",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: const Text("🏠  MENU UTAMA",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -985,21 +744,15 @@ class _GamePageState extends State<GamePage> {
 
   @override
   Widget build(BuildContext context) {
-    final double progress =
-        timeLeft / startingTime;
+    final double progress = timeLeft / startingTime;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F1FF),
       appBar: AppBar(
-        backgroundColor:
-            const Color(0xFF6A5AE0),
+        backgroundColor: const Color(0xFF6A5AE0),
         foregroundColor: Colors.white,
-        title: Text(
-          "${widget.totalCards} KARTU",
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: Text("${widget.totalCards} KARTU",
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
           IconButton(
@@ -1009,26 +762,21 @@ class _GamePageState extends State<GamePage> {
                 context: context,
                 builder: (context) {
                   return AlertDialog(
-                    title:
-                        const Text("🔄 Mulai Ulang?"),
+                    title: const Text("🔄 Mulai Ulang?"),
                     content: const Text(
                       "Permainan saat ini akan dimulai dari awal.",
                     ),
                     actions: [
                       TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child:
-                            const Text("BATAL"),
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("BATAL"),
                       ),
                       ElevatedButton(
                         onPressed: () {
                           Navigator.pop(context);
                           startGame();
                         },
-                        child:
-                            const Text("ULANGI"),
+                        child: const Text("ULANGI"),
                       ),
                     ],
                   );
@@ -1042,89 +790,56 @@ class _GamePageState extends State<GamePage> {
       body: SafeArea(
         child: Column(
           children: [
-            // STATISTIK
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                12,
-                12,
-                12,
-                5,
-              ),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 5),
               child: Row(
                 children: [
                   Expanded(
-                    child: StatBox(
-                      icon: "⭐",
-                      title: "SKOR",
-                      value: "$score",
-                    ),
+                    child: StatBox(icon: "⭐", title: "SKOR", value: "$score"),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child:
+                        StatBox(icon: "🎯", title: "GERAKAN", value: "$moves"),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: StatBox(
-                      icon: "🎯",
-                      title: "GERAKAN",
-                      value: "$moves",
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: StatBox(
-                      icon: "⏱️",
-                      title: "WAKTU",
-                      value: "${timeLeft}s",
-                    ),
+                        icon: "⏱️", title: "WAKTU", value: "${timeLeft}s"),
                   ),
                 ],
               ),
             ),
-
-            // PROGRESS TIMER
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 6,
-              ),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               child: ClipRRect(
-                borderRadius:
-                    BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20),
                 child: LinearProgressIndicator(
-                  value:
-                      progress.clamp(0.0, 1.0),
+                  value: progress.clamp(0.0, 1.0),
                   minHeight: 7,
-                  backgroundColor:
-                      Colors.black12,
+                  backgroundColor: Colors.black12,
                 ),
               ),
             ),
-
             const SizedBox(height: 5),
-
-            // GRID
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: GridView.builder(
-                  physics:
-                      const BouncingScrollPhysics(),
+                  physics: const BouncingScrollPhysics(),
                   itemCount: cards.length,
-                  gridDelegate:
-                      SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount:
-                        gridColumns,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: gridColumns,
                     crossAxisSpacing: 10,
                     mainAxisSpacing: 10,
                     childAspectRatio: 0.85,
                   ),
-                  itemBuilder:
-                      (context, index) {
+                  itemBuilder: (context, index) {
                     return FlipCard(
                       symbol: cards[index],
-                      isFlipped:
-                          flipped[index] ||
-                              matched[index],
-                      isMatched:
-                          matched[index],
+                      isFlipped: flipped[index] || matched[index],
+                      isMatched: matched[index],
                       onTap: () {
                         tapCard(index);
                       },
@@ -1159,18 +874,13 @@ class StatBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: 10,
-        horizontal: 6,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius:
-            BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color:
-                Colors.black.withOpacity(0.06),
+            color: Colors.black.withOpacity(0.06),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -1178,28 +888,17 @@ class StatBox extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(
-            icon,
-            style: const TextStyle(
-              fontSize: 19,
-            ),
-          ),
+          Text(icon, style: const TextStyle(fontSize: 19)),
           const SizedBox(height: 2),
           Text(
             title,
             style: const TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
+                fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey),
           ),
           const SizedBox(height: 2),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -1230,15 +929,10 @@ class FlipCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(
-          begin: 0,
-          end: isFlipped ? 1 : 0,
-        ),
-        duration:
-            const Duration(milliseconds: 450),
+        tween: Tween<double>(begin: 0, end: isFlipped ? 1 : 0),
+        duration: const Duration(milliseconds: 450),
         curve: Curves.easeInOut,
-        builder:
-            (context, value, child) {
+        builder: (context, value, child) {
           final double angle = value * pi;
           final bool isBack = value < 0.5;
 
@@ -1250,11 +944,8 @@ class FlipCard extends StatelessWidget {
             child: isBack
                 ? buildBack()
                 : Transform(
-                    alignment:
-                        Alignment.center,
-                    transform:
-                        Matrix4.identity()
-                          ..rotateY(pi),
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()..rotateY(pi),
                     child: buildFront(),
                   ),
           );
@@ -1266,24 +957,17 @@ class FlipCard extends StatelessWidget {
   Widget buildBack() {
     return Container(
       decoration: BoxDecoration(
-        gradient:
-            const LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF6A5AE0),
-            Color(0xFF8E7CFF),
-          ],
+          colors: [Color(0xFF6A5AE0), Color(0xFF8E7CFF)],
         ),
-        borderRadius:
-            BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color:
-                Colors.black.withOpacity(0.15),
+            color: Colors.black.withOpacity(0.15),
             blurRadius: 7,
-            offset:
-                const Offset(0, 4),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -1291,10 +975,7 @@ class FlipCard extends StatelessWidget {
         child: Text(
           "?",
           style: TextStyle(
-            color: Colors.white,
-            fontSize: 34,
-            fontWeight: FontWeight.bold,
-          ),
+              color: Colors.white, fontSize: 34, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -1303,38 +984,25 @@ class FlipCard extends StatelessWidget {
   Widget buildFront() {
     return Container(
       decoration: BoxDecoration(
-        color: isMatched
-            ? const Color(0xFFE7F8EA)
-            : Colors.white,
-        borderRadius:
-            BorderRadius.circular(16),
+        color: isMatched ? const Color(0xFFE7F8EA) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isMatched
-              ? Colors.green
-              : Colors.black12,
+          color: isMatched ? Colors.green : Colors.black12,
           width: isMatched ? 2 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color:
-                Colors.black.withOpacity(0.10),
+            color: Colors.black.withOpacity(0.10),
             blurRadius: 7,
-            offset:
-                const Offset(0, 4),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Center(
         child: AnimatedScale(
           scale: isMatched ? 1.1 : 1.0,
-          duration:
-              const Duration(milliseconds: 250),
-          child: Text(
-            symbol,
-            style: const TextStyle(
-              fontSize: 38,
-            ),
-          ),
+          duration: const Duration(milliseconds: 250),
+          child: Text(symbol, style: const TextStyle(fontSize: 38)),
         ),
       ),
     );
