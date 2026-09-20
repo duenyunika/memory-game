@@ -1,7 +1,9 @@
 import "dart:async";
+import "dart:convert";
 import "dart:math";
 import "package:flutter/material.dart";
 import "package:audioplayers/audioplayers.dart";
+import "package:shared_preferences/shared_preferences.dart";
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -151,11 +153,35 @@ class _HomePageState extends State<HomePage> {
 
   final Map<int, int> highScores = {};
 
+  static const String _prefsKey = "high_scores";
+
   @override
   void initState() {
     super.initState();
     // Musik latar mulai begitu app dibuka
     AudioManager.instance.playBackgroundMusic();
+    loadHighScores();
+  }
+
+  Future<void> loadHighScores() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? saved = prefs.getString(_prefsKey);
+    if (saved != null) {
+      final Map<String, dynamic> decoded = jsonDecode(saved);
+      setState(() {
+        highScores.clear();
+        decoded.forEach((key, value) {
+          highScores[int.parse(key)] = value as int;
+        });
+      });
+    }
+  }
+
+  Future<void> saveHighScores() async {
+    final prefs = await SharedPreferences.getInstance();
+    final Map<String, int> toSave =
+        highScores.map((key, value) => MapEntry(key.toString(), value));
+    await prefs.setString(_prefsKey, jsonEncode(toSave));
   }
 
   void updateHighScore(int cardCount, int score) {
@@ -164,6 +190,7 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         highScores[cardCount] = score;
       });
+      saveHighScores();
     }
   }
 
