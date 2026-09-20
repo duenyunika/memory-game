@@ -4,6 +4,28 @@ import "package:flutter/material.dart";
 import "package:audioplayers/audioplayers.dart";
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Supaya background music dan SFX bisa main BARENGAN tanpa
+  // saling "rebutan" dan mematikan satu sama lain di Android/iOS.
+  AudioPlayer.global.setAudioContext(
+    AudioContext(
+      android: AudioContextAndroid(
+        isSpeakerphoneOn: false,
+        stayAwake: false,
+        contentType: AndroidContentType.sonification,
+        usageType: AndroidUsageType.assistanceSonification,
+        audioFocus: AndroidAudioFocus.none,
+      ),
+      iOS: AudioContextIOS(
+        category: AVAudioSessionCategory.ambient,
+        options: const {
+          AVAudioSessionOptions.mixWithOthers,
+        },
+      ),
+    ),
+  );
+
   runApp(const MemoryMatchApp());
 }
 
