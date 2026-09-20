@@ -5,27 +5,6 @@ import "package:audioplayers/audioplayers.dart";
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Supaya background music dan SFX bisa main BARENGAN tanpa
-  // saling "rebutan" dan mematikan satu sama lain di Android/iOS.
-  AudioPlayer.global.setAudioContext(
-    AudioContext(
-      android: AudioContextAndroid(
-        isSpeakerphoneOn: false,
-        stayAwake: false,
-        contentType: AndroidContentType.sonification,
-        usageType: AndroidUsageType.assistanceSonification,
-        audioFocus: AndroidAudioFocus.none,
-      ),
-      iOS: AudioContextIOS(
-        category: AVAudioSessionCategory.ambient,
-        options: const {
-          AVAudioSessionOptions.mixWithOthers,
-        },
-      ),
-    ),
-  );
-
   runApp(const MemoryMatchApp());
 }
 
@@ -62,9 +41,42 @@ class AudioManager {
 
   bool _bgmStarted = false;
 
+  // Context khusus buat musik latar: tipe "music", pegang izin
+  // audio supaya bisa loop terus-terusan dengan stabil.
+  static const AudioContext _bgmContext = AudioContext(
+    android: AudioContextAndroid(
+      isSpeakerphoneOn: false,
+      stayAwake: false,
+      contentType: AndroidContentType.music,
+      usageType: AndroidUsageType.media,
+      audioFocus: AndroidAudioFocus.gain,
+    ),
+    iOS: AudioContextIOS(
+      category: AVAudioSessionCategory.playback,
+      options: {AVAudioSessionOptions.mixWithOthers},
+    ),
+  );
+
+  // Context khusus buat efek suara: cuma "numpang lewat" sebentar,
+  // musik latar cukup mengecil sesaat (duck), tidak sampai berhenti.
+  static const AudioContext _sfxContext = AudioContext(
+    android: AudioContextAndroid(
+      isSpeakerphoneOn: false,
+      stayAwake: false,
+      contentType: AndroidContentType.sonification,
+      usageType: AndroidUsageType.assistanceSonification,
+      audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+    ),
+    iOS: AudioContextIOS(
+      category: AVAudioSessionCategory.playback,
+      options: {AVAudioSessionOptions.mixWithOthers},
+    ),
+  );
+
   Future<void> playBackgroundMusic() async {
     if (_bgmStarted) return;
     _bgmStarted = true;
+    await _bgmPlayer.setAudioContext(_bgmContext);
     await _bgmPlayer.setReleaseMode(ReleaseMode.loop);
     await _bgmPlayer.setVolume(0.4);
     await _bgmPlayer.play(AssetSource("audio/background_music.mp3"));
@@ -85,7 +97,13 @@ class AudioManager {
     }
   }
 
+  bool _sfxContextSet = false;
+
   Future<void> _playSfx(String fileName) async {
+    if (!_sfxContextSet) {
+      _sfxContextSet = true;
+      await _sfxPlayer.setAudioContext(_sfxContext);
+    }
     // stop() dulu supaya kalau tap cepat-cepat suaranya tidak numpuk aneh
     await _sfxPlayer.stop();
     await _sfxPlayer.play(AssetSource("audio/$fileName"));
