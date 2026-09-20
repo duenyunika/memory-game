@@ -43,7 +43,7 @@ class AudioManager {
 
   // Context khusus buat musik latar: tipe "music", pegang izin
   // audio supaya bisa loop terus-terusan dengan stabil.
-  static const AudioContext _bgmContext = AudioContext(
+  static final AudioContext _bgmContext = AudioContext(
     android: AudioContextAndroid(
       isSpeakerphoneOn: false,
       stayAwake: false,
@@ -59,7 +59,7 @@ class AudioManager {
 
   // Context khusus buat efek suara: cuma "numpang lewat" sebentar,
   // musik latar cukup mengecil sesaat (duck), tidak sampai berhenti.
-  static const AudioContext _sfxContext = AudioContext(
+  static final AudioContext _sfxContext = AudioContext(
     android: AudioContextAndroid(
       isSpeakerphoneOn: false,
       stayAwake: false,
